@@ -7,9 +7,15 @@
     "RGR"
   ],
   "key": {
-    "R": "minecraft:redstone",
-    "G": "minecraft:gold_ingot",
-    "A": "minecraft:amethyst_shard"
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    }
   },
   "result": {
     "count": 1,
