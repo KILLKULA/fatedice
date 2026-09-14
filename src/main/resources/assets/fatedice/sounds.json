@@ -1,0 +1,21 @@
+{
+  "dice_roll": {
+    "subtitle": "subtitles.fatedice.dice_roll",
+    "sounds": [
+      "minecraft:dig/bone1",
+      "minecraft:dig/bone2"
+    ]
+  },
+  "critical_success": {
+    "subtitle": "subtitles.fatedice.critical_success",
+    "sounds": [
+      "minecraft:item/totem/use"
+    ]
+  },
+  "critical_fail": {
+    "subtitle": "subtitles.fatedice.critical_fail",
+    "sounds": [
+      "minecraft:random/anvil_land"
+    ]
+  }
+}

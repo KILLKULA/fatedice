@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+
+# Do NOT ignore Gradle wrapper JAR
+!gradle/wrapper/gradle-wrapper.jar
+
+# Minecraft run directory & logs
+run/
+logs/
+*.log
+
+# IDEs & OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.swp
+*.bak
+Thumbs.db

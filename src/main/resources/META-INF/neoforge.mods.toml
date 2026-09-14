@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="fatedice"
+version="1.0.0"
+displayName="Fate Dice: Roll of Destiny"
+authors="Developer"
+description='''
+Бросок судьбы: магический двадцатигранный кубик (D20) со случайными событиями, тирами наград и критическими бросками!
+'''
+
+[[dependencies.fatedice]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.fatedice]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1, 1.22)"
+ordering="NONE"
+side="BOTH"
