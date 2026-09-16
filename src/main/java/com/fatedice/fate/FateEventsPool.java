@@ -846,6 +846,18 @@ public class FateEventsPool {
                     player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 600, 3)); // Haste IV
                     player.displayClientMessage(Component.literal("§6Сверхскоростная копка активирована! (Haste IV)"), true);
                 })
+                // 14.D: «Золотая лихорадка» (Фонтан золота и золотых яблок)
+                .add((level, player, pos) -> {
+                    List<ItemStack> goldLoot = List.of(
+                            new ItemStack(Items.GOLD_INGOT, 12),
+                            new ItemStack(Items.GOLD_INGOT, 12),
+                            new ItemStack(Items.RAW_GOLD_BLOCK, 3),
+                            new ItemStack(Items.GOLDEN_APPLE, 3)
+                    );
+                    dropItemBurst(level, pos, goldLoot);
+                    level.playSound(null, pos, SoundEvents.ARMOR_EQUIP_GOLD.value(), SoundSource.PLAYERS, 1.5F, 1.0F);
+                    player.displayClientMessage(Component.literal("§6§lЗолотая лихорадка! Вокруг вас забил фонтан золота и яблок!"), true);
+                })
         );
 
         // ==========================================
@@ -918,6 +930,19 @@ public class FateEventsPool {
                     }
                     level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.5F, 1.2F);
                 })
+                // 16.D: «Рудный гейзер» (Гейзер самоцветов: лазурит, редстоун, изумруды, железо, алмазы)
+                .add((level, player, pos) -> {
+                    List<ItemStack> gems = List.of(
+                            new ItemStack(Items.LAPIS_LAZULI, 32),
+                            new ItemStack(Items.REDSTONE, 32),
+                            new ItemStack(Items.EMERALD, 12),
+                            new ItemStack(Items.IRON_INGOT, 16),
+                            new ItemStack(Items.DIAMOND, 4)
+                    );
+                    dropItemBurst(level, pos, gems);
+                    level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 1.5F, 1.2F);
+                    player.displayClientMessage(Component.literal("§b§lРудный гейзер! Из недр вырвался сноп драгоценных минералов!"), true);
+                })
         );
 
         // ==========================================
@@ -969,6 +994,43 @@ public class FateEventsPool {
                 .add((level, player, pos) -> {
                     transmuteNearbyStone(level, pos, Blocks.EMERALD_ORE.defaultBlockState(), 5);
                     dropItem(level, pos, new ItemStack(Items.EMERALD, 10));
+                })
+                // 18.E: «Осыпь меня алмазами!» (Каскадный дождь из 16 алмазов + Алмазный блок)
+                .add((level, player, pos) -> {
+                    dropItemShower(level, pos, new ItemStack(Items.DIAMOND), 16, 50);
+                    FateScheduler.schedule(25, () -> dropItem(level, pos, new ItemStack(Items.DIAMOND_BLOCK)));
+                    level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.5F, 1.0F);
+                    player.displayClientMessage(Component.literal("§b§lОсыпь меня алмазами! С небес пролился драгоценный алмазный дождь!"), true);
+                })
+                // 18.F: «Дар Недр» (Незерит, древние обломки, плачущий обсидиан)
+                .add((level, player, pos) -> {
+                    List<ItemStack> netherLoot = List.of(
+                            new ItemStack(Items.ANCIENT_DEBRIS, 2),
+                            new ItemStack(Items.NETHERITE_SCRAP, 2),
+                            new ItemStack(Items.NETHERITE_INGOT, 1),
+                            new ItemStack(Items.CRYING_OBSIDIAN, 8)
+                    );
+                    dropItemBurst(level, pos, netherLoot);
+                    level.playSound(null, pos, SoundEvents.RESPAWN_ANCHOR_SET_SPAWN, SoundSource.PLAYERS, 1.2F, 1.2F);
+                    player.displayClientMessage(Component.literal("§4§lДревние недра расступились: дары Нижнего мира явились вам!"), true);
+                })
+                // 18.G (PvP / Co-op): «Всеобщий алмазный дождь» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    List<ServerPlayer> friends = FatePlayerUtils.findOtherPlayersInRadius(level, player, 150.0);
+                    dropItemShower(level, pos, new ItemStack(Items.DIAMOND), 8, 40);
+                    dropItem(level, pos, new ItemStack(Items.EMERALD, 16));
+
+                    for (ServerPlayer friend : friends) {
+                        dropItemShower(level, friend.blockPosition(), new ItemStack(Items.DIAMOND), 8, 40);
+                        dropItem(level, friend.blockPosition(), new ItemStack(Items.EMERALD, 16));
+                        friend.displayClientMessage(Component.literal("§b[Судьба] " + player.getName().getString() + " осыпал всех алмазами! Наслаждайтесь дождем!"), false);
+                    }
+                    if (!friends.isEmpty()) {
+                        player.displayClientMessage(Component.literal("§bВы разделили алмазный дождь с соратниками (" + friends.size() + " игроков)!"), false);
+                    } else {
+                        dropItem(level, pos, new ItemStack(Items.DIAMOND, 8));
+                        player.displayClientMessage(Component.literal("§bЩедрая Судьба удвоила вашу алмазную награду!"), true);
+                    }
                 })
         );
 
@@ -1073,6 +1135,24 @@ public class FateEventsPool {
                         }
                     }
                 })
+                // 20.E: «Рог Изобилия Фортуны» (Взрыв легендарных сокровищ: незеритовый блок, алмазы, чар. яблоки)
+                .add((level, player, pos) -> {
+                    applyGodlyBuffs(player);
+                    List<ItemStack> treasures = List.of(
+                            new ItemStack(Items.DIAMOND, 16),
+                            new ItemStack(Items.NETHERITE_BLOCK, 1),
+                            new ItemStack(Items.NETHERITE_SCRAP, 4),
+                            new ItemStack(Items.EMERALD, 32),
+                            new ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 2),
+                            new ItemStack(Items.TOTEM_OF_UNDYING, 1)
+                    );
+                    dropItemBurst(level, pos, treasures);
+                    dropItemShower(level, pos, new ItemStack(Items.DIAMOND), 12, 40);
+
+                    level.playSound(null, pos, SoundEvents.RAID_HORN.value(), SoundSource.PLAYERS, 2.0F, 1.0F);
+                    level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, pos.getX() + 0.5, pos.getY() + 1.5, pos.getZ() + 0.5, 60, 0.8, 0.8, 0.8, 0.2);
+                    player.displayClientMessage(Component.literal("§6§l★ Небесный Рог Изобилия опрокинул на вас немыслимые богатства!"), false);
+                })
         );
     }
 
@@ -1147,5 +1227,38 @@ public class FateEventsPool {
         ItemEntity entity = new ItemEntity(level, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, stack);
         entity.setDefaultPickUpDelay();
         level.addFreshEntity(entity);
+    }
+
+    private static void dropItemShower(ServerLevel level, BlockPos center, ItemStack singleItemType, int totalItems, int durationTicks) {
+        int interval = Math.max(1, durationTicks / totalItems);
+        FateScheduler.scheduleRepeating(interval, totalItems, (index) -> {
+            double offsetX = (level.random.nextDouble() - 0.5) * 3.5;
+            double offsetZ = (level.random.nextDouble() - 0.5) * 3.5;
+            double spawnY = center.getY() + 3.0 + level.random.nextDouble();
+
+            ItemEntity item = new ItemEntity(level, center.getX() + 0.5 + offsetX, spawnY, center.getZ() + 0.5 + offsetZ, singleItemType.copy());
+            item.setDeltaMovement((level.random.nextDouble() - 0.5) * 0.1, -0.05, (level.random.nextDouble() - 0.5) * 0.1);
+            item.setDefaultPickUpDelay();
+            level.addFreshEntity(item);
+
+            level.sendParticles(ParticleTypes.FIREWORK, item.getX(), item.getY(), item.getZ(), 4, 0.1, 0.1, 0.1, 0.02);
+            if (index % 3 == 0) {
+                level.playSound(null, center, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.0F, 1.2F + level.random.nextFloat() * 0.5F);
+            }
+        });
+    }
+
+    private static void dropItemBurst(ServerLevel level, BlockPos center, List<ItemStack> items) {
+        for (ItemStack stack : items) {
+            ItemEntity item = new ItemEntity(level, center.getX() + 0.5, center.getY() + 1.2, center.getZ() + 0.5, stack);
+            double vx = (level.random.nextDouble() - 0.5) * 0.4;
+            double vy = 0.35 + level.random.nextDouble() * 0.2;
+            double vz = (level.random.nextDouble() - 0.5) * 0.4;
+            item.setDeltaMovement(vx, vy, vz);
+            item.setDefaultPickUpDelay();
+            level.addFreshEntity(item);
+        }
+        level.playSound(null, center, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.3F);
+        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, center.getX() + 0.5, center.getY() + 1.5, center.getZ() + 0.5, 25, 0.5, 0.5, 0.5, 0.1);
     }
 }

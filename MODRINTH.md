@@ -54,13 +54,13 @@ Will you be blessed by the Gods with enchanted Elytra and divine strength, or wi
 | **11** | 🍞 Minor Bonus | **Hearty Snack** | • Full hunger saturation + 1 Golden Apple.<br>• 5 Golden Carrots + Saturation II.<br>• Basket of 8 Cooked Steaks & 8 Baked Potatoes. |
 | **12** | 🏃 Minor Bonus | **Scout's Haste** | • Speed II + Jump Boost II for 45s.<br>• Speed III + Dolphin's Grace + Water Breathing. |
 | **13** | 👁️ Minor Bonus | **Chameleon** | • Invisibility + Night Vision (60s) + smoke cloud screen. |
-| **14** | ⛏️ Minor Bonus | **Golden Hands** | • Haste II for 2 minutes.<br>• Haste III + repairs your held tool by 150 durability. |
+| **14** | ⛏️ Minor Bonus | **Golden Hands** | • Haste II for 2 minutes or Haste IV super-drill.<br>• Repairs held tool durability.<br>• **Gold Rush**: fountain of 24 gold ingots, 3 raw gold blocks, 3 golden apples! |
 | **15** | 🔮 Bonus | **Random Alchemy** | • *Fighter Set*: Strength II + Resistance I + Regeneration I (2 min).<br>• *Miner Set*: Night Vision + Fire Resistance + Haste I (3 min).<br>• *Windwalker Set*: Speed II + Slow Falling + Jump Boost II (2 min). |
-| **16** | 💖 Good Bonus | **Second Wind** | • Full instant heal + Absorption IV (8 golden hearts) for 3 minutes.<br>• Full cleanse of all debuffs + Regeneration III (20s). |
+| **16** | 💖 Good Bonus | **Second Wind & Wealth** | • Full instant heal + Absorption IV (8 golden hearts) for 3 minutes.<br>• Full cleanse of debuffs.<br>• **Ore & Gem Geyser**: burst of 32 lapis, 32 redstone, 12 emeralds, 16 iron, 4 diamonds! |
 | **17** | ☀️ Good Bonus | **Clear Horizon** | • Clears thunderstorms instantly, sets daytime to dawn, grants Hero of the Village II (5 min). |
-| **18** | 🧲 Great Bonus | **Magnet of Wealth** | • Transmutes 4 nearby stone blocks into **Diamond Ore**.<br>• Transmutes stone into Gold Ore + drops 5 Gold Ingots.<br>• Transmutes stone into **Ancient Debris**! |
+| **18** | 🧲 Great Bonus | **Magnet of Wealth** | • **Diamond Shower («Осыпь меня алмазами!»)**: cascade of 16 diamonds falling from above + 1 Diamond Block!<br>• **Netherite Cache**: 2 Ancient Debris, 2 Netherite Scraps, 1 Netherite Ingot, 8 Crying Obsidian.<br>• **Co-op Diamond Rain**: 8 diamonds and 16 emeralds for all players in 150 blocks!<br>• Transmutes stone into diamond/gold/ancient debris. |
 | **19** | 🐎 Great Bonus | **Faithful Companion** | • Tamed white Warhorse with Diamond Horse Armor and Saddle.<br>• Friendly Iron Golem "Guardian of Fate".<br>• Pack of 3 loyal tamed Wolves. |
-| **20** | 🌟 **Natural 20** | **Blessing of the Gods** | • 5-minute Strength III, Resistance II, Glowing & Regeneration.<br>• **Gift A**: Enchanted Elytra (Unbreaking III, Mending) + 64 Fireworks.<br>• **Gift B**: Nether Star + 2 Enchanted Golden Apples.<br>• **Gift C**: Netherite Sword "Blade of Destiny" (Sharpness V, Looting III, Fire Aspect II, Unbreaking III). |
+| **20** | 🌟 **Natural 20** | **Blessing of the Gods** | • 5-minute god-tier buffs (Strength III, Resistance II, Regeneration).<br>• **Horn of Ultimate Abundance**: explosion of 16 Diamonds, 1 Netherite Block, 4 Netherite Scraps, 32 Emeralds, 2 Notch Apples, Totem of Undying!<br>• **Gift A**: Enchanted Elytra (Unbreaking III, Mending) + 64 Fireworks.<br>• **Gift B**: Nether Star + 2 Enchanted Golden Apples.<br>• **Gift C**: Netherite Sword "Blade of Destiny" (Sharpness V, Looting III, Fire Aspect II, Unbreaking III). |
 
 </details>
 
