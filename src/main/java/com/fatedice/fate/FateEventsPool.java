@@ -2,9 +2,9 @@ package com.fatedice.fate;
 
 import com.fatedice.FateDiceMod;
 import com.fatedice.config.FateConfig;
+import com.fatedice.init.ModEffects;
 import com.fatedice.init.ModItems;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -13,20 +13,23 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Chicken;
+import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.animal.horse.Horse;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Phantom;
 import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.monster.Zombie;
@@ -37,9 +40,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FateEventsPool {
@@ -68,8 +74,8 @@ public class FateEventsPool {
                         bolt.moveTo(player.position());
                         level.addFreshEntity(bolt);
                     }
-                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 600, 3)); // Mining Fatigue IV (30s)
-                    player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 600, 0)); // Blindness (30s)
+                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 600, 3));
+                    player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 600, 0));
 
                     ItemStack mainHand = player.getMainHandItem();
                     if (!mainHand.isEmpty() && mainHand.isDamageableItem()) {
@@ -83,7 +89,6 @@ public class FateEventsPool {
                     Creeper creeper = EntityType.CREEPER.create(level);
                     if (creeper != null) {
                         creeper.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, 0, 0);
-                        // Make charged creeper via lightning strike directly on it
                         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
                         if (bolt != null) {
                             bolt.moveTo(creeper.position());
@@ -97,8 +102,40 @@ public class FateEventsPool {
                 })
                 // 1.C: Взлет на 25 блоков и свободное падение
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 40, 9)); // Levitation X for 2s
+                    player.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 40, 9));
                     level.playSound(null, pos, SoundEvents.GHAST_WARN, SoundSource.PLAYERS, 1.0F, 0.5F);
+                })
+                // 1.D (PvP / Co-op): «Козел отпущения» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    ServerPlayer victim = FatePlayerUtils.findNearestOtherPlayer(level, player, 150.0);
+                    if (victim != null) {
+                        LightningBolt b1 = EntityType.LIGHTNING_BOLT.create(level);
+                        if (b1 != null) { b1.moveTo(player.position()); level.addFreshEntity(b1); }
+                        LightningBolt b2 = EntityType.LIGHTNING_BOLT.create(level);
+                        if (b2 != null) { b2.moveTo(victim.position()); level.addFreshEntity(b2); }
+
+                        dropItem(level, victim.blockPosition(), new ItemStack(Items.GOLDEN_APPLE));
+                        victim.displayClientMessage(Component.literal("§eВ вас ударила рикошетная молния от " + player.getName().getString() + "! Но вам досталось золотое яблоко!"), false);
+                        player.displayClientMessage(Component.literal("§cВаша кара задела " + victim.getName().getString() + "!"), false);
+                    } else {
+                        // Solo fallback: 3 lightnings nearby
+                        for (int i = 0; i < 3; i++) {
+                            LightningBolt b = EntityType.LIGHTNING_BOLT.create(level);
+                            if (b != null) {
+                                b.moveTo(pos.getX() + level.random.nextInt(7) - 3, pos.getY(), pos.getZ() + level.random.nextInt(7) - 3, 0, 0);
+                                level.addFreshEntity(b);
+                            }
+                        }
+                    }
+                })
+                // 1.E (Галлюцинация): Аудио-скример шипения и взрыва
+                .add((level, player, pos) -> {
+                    level.playSound(null, pos, SoundEvents.CREEPER_PRIMED, SoundSource.PLAYERS, 2.0F, 1.0F);
+                    FateScheduler.schedule(25, () -> {
+                        level.playSound(null, pos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 2.0F, 0.8F);
+                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, player.getX(), player.getY() + 1, player.getZ(), 1, 0, 0, 0, 0);
+                        player.displayClientMessage(Component.literal("§4Это была всего лишь жуткая галлюцинация... Сердце ушло в пятки!"), true);
+                    });
                 })
         );
 
@@ -111,8 +148,7 @@ public class FateEventsPool {
                 "§c")
                 .add((level, player, pos) -> {
                     level.setWeatherParameters(0, 6000, true, true);
-                    player.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 100, 0)); // Levitation I (5s)
-
+                    player.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 100, 0));
                     for (int i = 0; i < 3; i++) {
                         double angle = (i * 2 * Math.PI) / 3;
                         BlockPos strikePos = pos.offset((int) (Math.cos(angle) * 7), 0, (int) (Math.sin(angle) * 7));
@@ -124,8 +160,28 @@ public class FateEventsPool {
                     }
                 })
                 .add((level, player, pos) -> {
-                    player.setTicksFrozen(240); // Freeze effect
-                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 300, 1)); // Slowness II
+                    player.setTicksFrozen(240);
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 300, 1));
+                })
+                // 2.C (Управление): «Морская болезнь» — инверсия WASD на 15 секунд
+                .add((level, player, pos) -> {
+                    player.addEffect(new MobEffectInstance(ModEffects.INVERTED_CONTROLS, 300, 0));
+                    player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 300, 0));
+                    player.displayClientMessage(Component.literal("§cГолова кружится... Ваши ноги идут в обратную сторону! (WASD инвертирован)"), true);
+                    level.playSound(null, pos, SoundEvents.ELDER_GUARDIAN_CURSE, SoundSource.PLAYERS, 0.8F, 1.2F);
+                })
+                // 2.D (Галлюцинация): Вой бури и летучие мыши
+                .add((level, player, pos) -> {
+                    level.playSound(null, pos, SoundEvents.PHANTOM_BITE, SoundSource.PLAYERS, 1.5F, 0.5F);
+                    player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 200, 0));
+                    for (int i = 0; i < 5; i++) {
+                        Chicken bat = EntityType.CHICKEN.create(level);
+                        if (bat != null) {
+                            bat.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY() + 2, pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                            level.addFreshEntity(bat);
+                            FateScheduler.schedule(80, bat::discard);
+                        }
+                    }
                 })
         );
 
@@ -137,51 +193,52 @@ public class FateEventsPool {
                 Component.translatable("fate.category.misfortune"),
                 "§c")
                 .add((level, player, pos) -> {
-                    Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
-                    BlockPos groundCenter = player.blockPosition().below();
-
-                    for (int dx = -2; dx <= 2; dx++) {
-                        for (int dz = -2; dz <= 2; dz++) {
-                            BlockPos target = groundCenter.offset(dx, 0, dz);
-                            BlockState state = level.getBlockState(target);
-                            if (!state.isAir() && state.getBlock() != Blocks.BEDROCK && state.isSolid()) {
-                                originalBlocks.put(target, state);
-                                level.setBlockAndUpdate(target, Blocks.COBWEB.defaultBlockState());
-                            }
-                        }
-                    }
-
-                    // Revert blocks after 15 seconds (300 ticks)
-                    FateScheduler.schedule(300, () -> {
-                        for (Map.Entry<BlockPos, BlockState> entry : originalBlocks.entrySet()) {
-                            if (level.getBlockState(entry.getKey()).is(Blocks.COBWEB)) {
-                                level.setBlockAndUpdate(entry.getKey(), entry.getValue());
-                            }
-                        }
-                    });
+                    replaceGroundTemporarily(level, player.blockPosition().below(), Blocks.COBWEB.defaultBlockState(), 300);
                 })
                 .add((level, player, pos) -> {
-                    Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
-                    BlockPos groundCenter = player.blockPosition().below();
+                    replaceGroundTemporarily(level, player.blockPosition().below(), Blocks.SOUL_SAND.defaultBlockState(), 300);
+                })
+                // 3.C (PvP / Co-op): «Обмен телами» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    ServerPlayer target = FatePlayerUtils.findNearestOtherPlayer(level, player, 150.0);
+                    if (target != null) {
+                        Vec3 pPos = player.position();
+                        Vec3 tPos = target.position();
+                        float pYRot = player.getYRot();
+                        float tYRot = target.getYRot();
 
-                    for (int dx = -2; dx <= 2; dx++) {
-                        for (int dz = -2; dz <= 2; dz++) {
-                            BlockPos target = groundCenter.offset(dx, 0, dz);
-                            BlockState state = level.getBlockState(target);
-                            if (!state.isAir() && state.getBlock() != Blocks.BEDROCK && state.isSolid()) {
-                                originalBlocks.put(target, state);
-                                level.setBlockAndUpdate(target, Blocks.SOUL_SAND.defaultBlockState());
-                            }
+                        player.teleportTo(tPos.x, tPos.y, tPos.z);
+                        player.setYRot(tYRot);
+                        target.teleportTo(pPos.x, pPos.y, pPos.z);
+                        target.setYRot(pYRot);
+
+                        level.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+                        level.playSound(null, target.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+
+                        player.displayClientMessage(Component.literal("§dВы поменялись местами с " + target.getName().getString() + "!"), false);
+                        target.displayClientMessage(Component.literal("§d" + player.getName().getString() + " поменялся с вами местами силой судьбы!"), false);
+                    } else {
+                        // Solo fallback: обмен местами с ближайшим мобом
+                        LivingEntity nearestMob = FatePlayerUtils.findNearestOtherEntity(level, player, 30.0);
+                        if (nearestMob != null) {
+                            Vec3 pPos = player.position();
+                            Vec3 mPos = nearestMob.position();
+                            player.teleportTo(mPos.x, mPos.y, mPos.z);
+                            nearestMob.teleportTo(pPos.x, pPos.y, pPos.z);
+                            level.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+                            player.displayClientMessage(Component.literal("§dВы поменялись местами с ближайшим существом!"), true);
+                        } else {
+                            player.teleportTo(player.getX() + 10, player.getY(), player.getZ() + 10);
+                            player.displayClientMessage(Component.literal("§dВас внезапно сместило в пространстве!"), true);
                         }
                     }
-
-                    FateScheduler.schedule(300, () -> {
-                        for (Map.Entry<BlockPos, BlockState> entry : originalBlocks.entrySet()) {
-                            if (level.getBlockState(entry.getKey()).is(Blocks.SOUL_SAND)) {
-                                level.setBlockAndUpdate(entry.getKey(), entry.getValue());
-                            }
-                        }
-                    });
+                })
+                // 3.D: «Вязкое болото» — тяжелые ноги
+                .add((level, player, pos) -> {
+                    player.addEffect(new MobEffectInstance(ModEffects.HEAVY_LEGS, 300, 0));
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 300, 1));
+                    player.displayClientMessage(Component.literal("§cВаши ноги словно налились свинцом! Прыжки заблокированы."), true);
+                    level.playSound(null, pos, SoundEvents.SLIME_BLOCK_PLACE, SoundSource.PLAYERS, 1.0F, 0.6F);
                 })
         );
 
@@ -193,24 +250,17 @@ public class FateEventsPool {
                 Component.translatable("fate.category.misfortune"),
                 "§c")
                 .add((level, player, pos) -> {
-                    AttributeInstance scaleAttr = player.getAttribute(Attributes.SCALE);
-                    if (scaleAttr != null) {
-                        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(FateDiceMod.MOD_ID, "micro_scale");
-                        scaleAttr.removeModifier(id); // Clean any previous
-                        scaleAttr.addTransientModifier(new AttributeModifier(id, -0.70, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)); // 0.3x
-
-                        player.displayClientMessage(Component.literal("§cВы сжались до размера мыши (0.3x)!"), true);
-                        level.playSound(null, pos, SoundEvents.PUFFER_FISH_BLOW_OUT, SoundSource.PLAYERS, 1.0F, 1.8F);
-
-                        // Revert scale back after 60 seconds (1200 ticks)
-                        FateScheduler.schedule(1200, () -> {
-                            AttributeInstance attr = player.getAttribute(Attributes.SCALE);
-                            if (attr != null) {
-                                attr.removeModifier(id);
-                                player.displayClientMessage(Component.literal("§aВаш рост вернулся в норму."), true);
-                            }
-                        });
-                    }
+                    applyScale(player, "micro_scale", -0.70, 1200, "§cВы сжались до размера мыши (0.3x)!");
+                })
+                .add((level, player, pos) -> {
+                    applyScale(player, "micro_scale", -0.50, 900, "§cВы уменьшились до 0.5x!");
+                    player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 900, 0));
+                })
+                // 4.C (Управление): «Гномик-спринтер» — уменьшение + бесконтрольный бег
+                .add((level, player, pos) -> {
+                    applyScale(player, "micro_scale", -0.60, 600, "§cВы крошечный и не можете перестать бежать!");
+                    player.addEffect(new MobEffectInstance(ModEffects.FORCED_SPRINT, 200, 0));
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 1));
                 })
         );
 
@@ -235,6 +285,26 @@ public class FateEventsPool {
                     player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 200, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 60, 0));
                     level.playSound(null, pos, SoundEvents.AMBIENT_CAVE.value(), SoundSource.PLAYERS, 1.0F, 0.5F);
+                })
+                // 5.C (Галлюцинация): Скример зажженного динамита прямо в ухо
+                .add((level, player, pos) -> {
+                    level.playSound(null, pos, SoundEvents.TNT_PRIMED, SoundSource.PLAYERS, 2.0F, 1.0F);
+                    FateScheduler.schedule(40, () -> {
+                        level.playSound(null, pos, SoundEvents.CHICKEN_EGG, SoundSource.PLAYERS, 1.0F, 0.5F);
+                        player.displayClientMessage(Component.literal("§7Фух... Никакого динамита не было."), true);
+                    });
+                })
+                // 5.D: Выпадение предмета из оффхенда
+                .add((level, player, pos) -> {
+                    ItemStack off = player.getOffhandItem();
+                    if (!off.isEmpty()) {
+                        player.drop(off.copy(), true);
+                        player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                        player.displayClientMessage(Component.literal("§cОт неожиданного испуга вы выронили предмет из левой руки!"), true);
+                        level.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0F, 0.5F);
+                    } else {
+                        player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 100, 0));
+                    }
                 })
         );
 
@@ -265,6 +335,23 @@ public class FateEventsPool {
                         }
                     }
                 })
+                // 6.C (PvP / Co-op): «Засада для соседа» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    ServerPlayer target = FatePlayerUtils.findNearestOtherPlayer(level, player, 150.0);
+                    ServerPlayer victim = target != null ? target : player;
+                    for (int i = 0; i < 3; i++) {
+                        Skeleton skel = EntityType.SKELETON.create(level);
+                        if (skel != null) {
+                            skel.moveTo(victim.getX() + level.random.nextInt(5) - 2, victim.getY(), victim.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                            skel.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+                            level.addFreshEntity(skel);
+                        }
+                    }
+                    if (target != null) {
+                        target.displayClientMessage(Component.literal("§cНа вас внезапно напали скелеты из-за неудачного броска " + player.getName().getString() + "!"), false);
+                        player.displayClientMessage(Component.literal("§6Скелеты заспавнились возле " + target.getName().getString() + "!"), false);
+                    }
+                })
         );
 
         // ==========================================
@@ -287,6 +374,13 @@ public class FateEventsPool {
                         }
                     }
                 })
+                // 7.B (Управление): «Горящие пятки» — принудительный бег вперед
+                .add((level, player, pos) -> {
+                    player.igniteForSeconds(5);
+                    player.addEffect(new MobEffectInstance(ModEffects.FORCED_SPRINT, 200, 0));
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 1));
+                    player.displayClientMessage(Component.literal("§cПод вами горит земля! Вы бежите вперед сломя голову!"), true);
+                })
         );
 
         // ==========================================
@@ -297,7 +391,6 @@ public class FateEventsPool {
                 Component.translatable("fate.category.misfortune"),
                 "§c")
                 .add((level, player, pos) -> {
-                    // Alternating Levitation and Slow Falling
                     player.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 60, 1));
                     FateScheduler.schedule(60, () -> {
                         player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 60, 0));
@@ -309,6 +402,23 @@ public class FateEventsPool {
                         });
                     });
                 })
+                // 8.B (Управление): «Свинцовые ноги» — запрет прыжков
+                .add((level, player, pos) -> {
+                    player.addEffect(new MobEffectInstance(ModEffects.HEAVY_LEGS, 400, 0));
+                    player.displayClientMessage(Component.literal("§cГравитация вдавила вас в землю! Прыжки заблокированы на 20 сек."), true);
+                    level.playSound(null, pos, SoundEvents.ANVIL_FALL, SoundSource.PLAYERS, 0.7F, 0.5F);
+                })
+                // 8.C (PvP / Co-op): «Гравитационный отскок»
+                .add((level, player, pos) -> {
+                    AABB radiusBox = player.getBoundingBox().inflate(15.0);
+                    List<LivingEntity> nearby = level.getEntitiesOfClass(LivingEntity.class, radiusBox, LivingEntity::isAlive);
+                    for (LivingEntity e : nearby) {
+                        e.setDeltaMovement(e.getDeltaMovement().x, 1.2, e.getDeltaMovement().z);
+                        e.hurtMarked = true;
+                    }
+                    level.playSound(null, pos, SoundEvents.GHAST_SHOOT, SoundSource.PLAYERS, 1.0F, 0.8F);
+                    player.displayClientMessage(Component.literal("§bГравитационная волна подбросила всех вокруг!"), true);
+                })
         );
 
         // ==========================================
@@ -319,9 +429,33 @@ public class FateEventsPool {
                 Component.translatable("fate.category.misfortune"),
                 "§c")
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 1200, 1)); // Weakness II (60s)
-                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 1)); // Slowness II (60s)
+                    player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 1200, 1));
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 1));
                     player.getFoodData().setFoodLevel(Math.min(player.getFoodData().getFoodLevel(), 2));
+                })
+                // 9.B (Управление): «Дрожащие руки» — перемешивание слотов хотбара
+                .add((level, player, pos) -> {
+                    var inv = player.getInventory();
+                    for (int i = 0; i < 9; i++) {
+                        int swapWith = level.random.nextInt(9);
+                        ItemStack temp = inv.getItem(i);
+                        inv.setItem(i, inv.getItem(swapWith));
+                        inv.setItem(swapWith, temp);
+                    }
+                    player.displayClientMessage(Component.literal("§6Ваши руки задрожали, и предметы в хотбаре перемешались!"), true);
+                    level.playSound(null, pos, SoundEvents.ARMOR_EQUIP_LEATHER.value(), SoundSource.PLAYERS, 1.0F, 1.0F);
+                })
+                // 9.C (PvP / Co-op): «Сброс кармы» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    ServerPlayer other = FatePlayerUtils.findNearestOtherPlayer(level, player, 150.0);
+                    if (other != null) {
+                        other.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600, 1));
+                        other.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 600, 1));
+                        other.displayClientMessage(Component.literal("§c" + player.getName().getString() + " сбросил на вас свое проклятие слабости!"), false);
+                        player.displayClientMessage(Component.literal("§aВы перенаправили слабость на " + other.getName().getString() + "!"), false);
+                    } else {
+                        player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600, 1));
+                    }
                 })
         );
 
@@ -353,6 +487,11 @@ public class FateEventsPool {
                         });
                     }
                 })
+                // 10.D (Галлюцинация): Шепот ветра
+                .add((level, player, pos) -> {
+                    level.playSound(null, pos, SoundEvents.BELL_RESONATE, SoundSource.PLAYERS, 1.0F, 0.8F);
+                    player.displayClientMessage(Component.literal("§8«Судьба наблюдает за каждым твоим шагом...»"), true);
+                })
         );
 
         // ==========================================
@@ -376,6 +515,22 @@ public class FateEventsPool {
                     dropItem(level, pos, new ItemStack(Items.COOKED_BEEF, 8));
                     dropItem(level, pos, new ItemStack(Items.BAKED_POTATO, 8));
                 })
+                // 11.D (PvP / Co-op): «Пир на весь мир» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    List<ServerPlayer> friends = FatePlayerUtils.findOtherPlayersInRadius(level, player, 150.0);
+                    player.getFoodData().setFoodLevel(20);
+                    player.getFoodData().setSaturation(20.0F);
+                    dropItem(level, pos, new ItemStack(Items.GOLDEN_APPLE));
+
+                    for (ServerPlayer friend : friends) {
+                        friend.getFoodData().setFoodLevel(20);
+                        dropItem(level, friend.blockPosition(), new ItemStack(Items.GOLDEN_APPLE));
+                        friend.displayClientMessage(Component.literal("§a" + player.getName().getString() + " устроил всеобщий пир! Вам выдано Золотое яблоко!"), false);
+                    }
+                    if (!friends.isEmpty()) {
+                        player.displayClientMessage(Component.literal("§aВы накормили всех вокруг (" + friends.size() + " игроков)!"), false);
+                    }
+                })
         );
 
         // ==========================================
@@ -386,13 +541,20 @@ public class FateEventsPool {
                 Component.translatable("fate.category.minor_bonus"),
                 "§a")
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 900, 1)); // Speed II (45s)
-                    player.addEffect(new MobEffectInstance(MobEffects.JUMP, 900, 1)); // Jump Boost II (45s)
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 900, 1));
+                    player.addEffect(new MobEffectInstance(MobEffects.JUMP, 900, 1));
                 })
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 800, 2)); // Speed III (40s)
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 800, 2));
                     player.addEffect(new MobEffectInstance(MobEffects.DOLPHINS_GRACE, 800, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 800, 0));
+                })
+                // 12.C: «Паркур-мастер»
+                .add((level, player, pos) -> {
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 1));
+                    player.addEffect(new MobEffectInstance(MobEffects.JUMP, 600, 2));
+                    player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 600, 0));
+                    player.displayClientMessage(Component.literal("§aРежим ниндзя: Скорость + Высокие прыжки + Безопасное падение!"), true);
                 })
         );
 
@@ -404,9 +566,27 @@ public class FateEventsPool {
                 Component.translatable("fate.category.minor_bonus"),
                 "§a")
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 1200, 0)); // Invisibility 60s
+                    player.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 1200, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 1200, 0));
                     level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, player.getX(), player.getY() + 1.0, player.getZ(), 30, 0.5, 0.5, 0.5, 0.05);
+                })
+                // 13.B (PvP / Co-op): «Маскарад» — обмен предметами в главной руке (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    ServerPlayer target = FatePlayerUtils.findNearestOtherPlayer(level, player, 150.0);
+                    if (target != null) {
+                        ItemStack pItem = player.getMainHandItem().copy();
+                        ItemStack tItem = target.getMainHandItem().copy();
+                        player.setItemInHand(InteractionHand.MAIN_HAND, tItem);
+                        target.setItemInHand(InteractionHand.MAIN_HAND, pItem);
+
+                        level.playSound(null, player.blockPosition(), SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 1.0F, 1.2F);
+                        player.displayClientMessage(Component.literal("§dМаскарад! Вы обменялись удерживаемыми предметами с " + target.getName().getString() + "!"), false);
+                        target.displayClientMessage(Component.literal("§dМаскарад! " + player.getName().getString() + " обменялся с вами удерживаемыми предметами!"), false);
+                    } else {
+                        // Solo fallback: 3 ender pearls
+                        dropItem(level, pos, new ItemStack(Items.ENDER_PEARL, 3));
+                        player.displayClientMessage(Component.literal("§dВам дарованы 3 жемчужины Края!"), true);
+                    }
                 })
         );
 
@@ -418,15 +598,20 @@ public class FateEventsPool {
                 Component.translatable("fate.category.minor_bonus"),
                 "§a")
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 2400, 1)); // Haste II (2 min)
+                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 2400, 1));
                 })
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 900, 2)); // Haste III (45s)
+                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 900, 2));
                     ItemStack tool = player.getMainHandItem();
                     if (!tool.isEmpty() && tool.isDamageableItem()) {
                         tool.setDamageValue(Math.max(0, tool.getDamageValue() - 150));
                         player.displayClientMessage(Component.literal("§aВаш инструмент восстановлен!"), true);
                     }
+                })
+                // 14.C: «Бур»
+                .add((level, player, pos) -> {
+                    player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 600, 3)); // Haste IV
+                    player.displayClientMessage(Component.literal("§6Сверхскоростная копка активирована! (Haste IV)"), true);
                 })
         );
 
@@ -437,23 +622,35 @@ public class FateEventsPool {
                 Component.translatable("fate.tier.15.title"),
                 Component.translatable("fate.category.bonus"),
                 "§9")
-                // Сет "Боец"
                 .add((level, player, pos) -> {
-                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 1)); // Strength II
-                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0)); // Resistance I
-                    player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 2400, 0)); // Regen I
+                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 1));
+                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0));
+                    player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 2400, 0));
                 })
-                // Сет "Пещерный житель"
                 .add((level, player, pos) -> {
                     player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 3600, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 3600, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 3600, 0));
                 })
-                // Сет "Ветрокрылый"
                 .add((level, player, pos) -> {
                     player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 1));
                     player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 2400, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.JUMP, 2400, 1));
+                })
+                // 15.E (PvP / Co-op): «Аура алхимика» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    List<ServerPlayer> nearby = FatePlayerUtils.findOtherPlayersInRadius(level, player, 150.0);
+                    player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 1200, 1));
+                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1200, 1));
+
+                    for (ServerPlayer p : nearby) {
+                        p.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 1200, 1));
+                        p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1200, 1));
+                        p.displayClientMessage(Component.literal("§bБлагословение алхимии от " + player.getName().getString() + " озарило вас!"), false);
+                    }
+                    if (!nearby.isEmpty()) {
+                        player.displayClientMessage(Component.literal("§bВы поделились мощной защитой с соратниками!"), false);
+                    }
                 })
         );
 
@@ -466,14 +663,27 @@ public class FateEventsPool {
                 "§b§l")
                 .add((level, player, pos) -> {
                     player.setHealth(player.getMaxHealth());
-                    player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 3600, 3)); // Absorption IV (8 hearts)
+                    player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 3600, 3));
                     level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.2F);
                 })
                 .add((level, player, pos) -> {
                     player.clearFire();
                     player.removeAllEffects();
                     player.setHealth(player.getMaxHealth());
-                    player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 400, 2)); // Regen III (20s)
+                    player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 400, 2));
+                })
+                // 16.C (PvP / Co-op): «Клятва исцеления» (радиус 150 блоков)
+                .add((level, player, pos) -> {
+                    List<ServerPlayer> targets = FatePlayerUtils.findOtherPlayersInRadius(level, player, 150.0);
+                    player.setHealth(player.getMaxHealth());
+                    player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2400, 1));
+
+                    for (ServerPlayer ally : targets) {
+                        ally.setHealth(ally.getMaxHealth());
+                        ally.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2400, 1));
+                        ally.displayClientMessage(Component.literal("§d" + player.getName().getString() + " применил Клятву исцеления! Вы полностью вылечены!"), false);
+                    }
+                    level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.5F, 1.2F);
                 })
         );
 
@@ -486,8 +696,22 @@ public class FateEventsPool {
                 "§b§l")
                 .add((level, player, pos) -> {
                     level.setWeatherParameters(24000, 0, false, false);
-                    level.setDayTime(1000); // Dawn
+                    level.setDayTime(1000);
                     player.addEffect(new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 6000, 1));
+                })
+                // 17.C: «Гравитационный вихрь»
+                .add((level, player, pos) -> {
+                    AABB vortexBox = player.getBoundingBox().inflate(25.0);
+                    List<Monster> monsters = level.getEntitiesOfClass(Monster.class, vortexBox);
+                    Vec3 targetCenter = player.position().add(player.getLookAngle().scale(3.0));
+
+                    for (Monster m : monsters) {
+                        Vec3 dir = targetCenter.subtract(m.position()).normalize().scale(1.2);
+                        m.setDeltaMovement(dir.x, 0.4, dir.z);
+                        m.hurtMarked = true;
+                    }
+                    level.playSound(null, pos, SoundEvents.WIND_CHARGE_BURST.value(), SoundSource.PLAYERS, 1.5F, 1.0F);
+                    player.displayClientMessage(Component.literal("§bВраги притянуты вихрем прямо перед вами!"), true);
                 })
         );
 
@@ -499,17 +723,19 @@ public class FateEventsPool {
                 Component.translatable("fate.category.very_good_bonus"),
                 "§6§l")
                 .add((level, player, pos) -> {
-                    // Алмазная жила
                     transmuteNearbyStone(level, pos, Blocks.DIAMOND_ORE.defaultBlockState(), 4);
                 })
                 .add((level, player, pos) -> {
-                    // Золотая жила + слитки
                     transmuteNearbyStone(level, pos, Blocks.DEEPSLATE_GOLD_ORE.defaultBlockState(), 5);
                     dropItem(level, pos, new ItemStack(Items.GOLD_INGOT, 5));
                 })
                 .add((level, player, pos) -> {
-                    // Древний обломок
                     transmuteNearbyStone(level, pos, Blocks.ANCIENT_DEBRIS.defaultBlockState(), 2);
+                })
+                // 18.D: Изумрудный россыпь
+                .add((level, player, pos) -> {
+                    transmuteNearbyStone(level, pos, Blocks.EMERALD_ORE.defaultBlockState(), 5);
+                    dropItem(level, pos, new ItemStack(Items.EMERALD, 10));
                 })
         );
 
@@ -520,7 +746,6 @@ public class FateEventsPool {
                 Component.translatable("fate.tier.19.title"),
                 Component.translatable("fate.category.very_good_bonus"),
                 "§6§l")
-                // Боевой скакун
                 .add((level, player, pos) -> {
                     Horse horse = EntityType.HORSE.create(level);
                     if (horse != null) {
@@ -532,7 +757,6 @@ public class FateEventsPool {
                         level.addFreshEntity(horse);
                     }
                 })
-                // Железный голем
                 .add((level, player, pos) -> {
                     IronGolem golem = EntityType.IRON_GOLEM.create(level);
                     if (golem != null) {
@@ -542,7 +766,6 @@ public class FateEventsPool {
                         level.addFreshEntity(golem);
                     }
                 })
-                // Стая волков
                 .add((level, player, pos) -> {
                     for (int i = 0; i < 3; i++) {
                         Wolf wolf = EntityType.WOLF.create(level);
@@ -551,6 +774,20 @@ public class FateEventsPool {
                             wolf.tame(player);
                             level.addFreshEntity(wolf);
                         }
+                    }
+                })
+                // 19.D (Веселье): «Бешеное родео»
+                .add((level, player, pos) -> {
+                    Pig pig = EntityType.PIG.create(level);
+                    if (pig != null) {
+                        pig.moveTo(player.getX(), player.getY(), player.getZ(), 0, 0);
+                        pig.setCustomName(Component.literal("§dСвинья Формулы-1"));
+                        pig.equipSaddle(new ItemStack(Items.SADDLE), SoundSource.NEUTRAL);
+                        pig.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 4)); // Speed V
+                        level.addFreshEntity(pig);
+                        player.startRiding(pig);
+                        dropItem(level, pos, new ItemStack(Items.CARROT_ON_A_STICK));
+                        player.displayClientMessage(Component.literal("§dБешеное родео! Держитесь крепче!"), true);
                     }
                 })
         );
@@ -562,7 +799,6 @@ public class FateEventsPool {
                 Component.translatable("fate.tier.20.title"),
                 Component.translatable("fate.category.natural_20"),
                 "§6§l★ ")
-                // 20.A «Дар Небес» (Элитры + Салюты)
                 .add((level, player, pos) -> {
                     applyGodlyBuffs(player);
                     ItemStack elytra = new ItemStack(Items.ELYTRA);
@@ -572,13 +808,11 @@ public class FateEventsPool {
                     dropItem(level, pos, elytra);
                     dropItem(level, pos, new ItemStack(Items.FIREWORK_ROCKET, 64));
                 })
-                // 20.B «Сердце Бездны» (Звезда Незера + Яблоки Нотча)
                 .add((level, player, pos) -> {
                     applyGodlyBuffs(player);
                     dropItem(level, pos, new ItemStack(Items.NETHER_STAR, 1));
                     dropItem(level, pos, new ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 2));
                 })
-                // 20.C «Оружие Судьбы» (Легендарный меч)
                 .add((level, player, pos) -> {
                     applyGodlyBuffs(player);
                     ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
@@ -590,14 +824,73 @@ public class FateEventsPool {
                     enchReg.getHolder(Enchantments.FIRE_ASPECT).ifPresent(h -> sword.enchant(h, 2));
                     dropItem(level, pos, sword);
                 })
+                // 20.D (PvP / Co-op): «Королевский банкет» — салюты и баффы ВСЕМ игрокам на сервере!
+                .add((level, player, pos) -> {
+                    applyGodlyBuffs(player);
+                    dropItem(level, pos, new ItemStack(Items.TOTEM_OF_UNDYING));
+                    dropItem(level, pos, new ItemStack(Items.ENCHANTED_GOLDEN_APPLE));
+
+                    for (ServerPlayer other : level.getServer().getPlayerList().getPlayers()) {
+                        if (other != player) {
+                            other.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 1200, 1));
+                            other.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 1200, 1));
+                            level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, other.getX(), other.getY() + 1.0, other.getZ(), 40, 0.5, 0.5, 0.5, 0.2);
+                            level.sendParticles(ParticleTypes.FIREWORK, other.getX(), other.getY() + 1.5, other.getZ(), 30, 0.5, 0.5, 0.5, 0.1);
+                            other.displayClientMessage(Component.literal("§6★ Игрок " + player.getName().getString() + " выбросил NATURAL 20! Весь мир празднует!"), false);
+                        }
+                    }
+                })
         );
     }
 
     private static void applyGodlyBuffs(ServerPlayer player) {
-        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 6000, 2)); // Strength III (5 min)
-        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 6000, 1)); // Resistance II (5 min)
-        player.addEffect(new MobEffectInstance(MobEffects.GLOWING, 6000, 0)); // Glowing (5 min)
-        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 1200, 1)); // Regen II (1 min)
+        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 6000, 2));
+        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 6000, 1));
+        player.addEffect(new MobEffectInstance(MobEffects.GLOWING, 6000, 0));
+        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 1200, 1));
+    }
+
+    private static void applyScale(ServerPlayer player, String modifierName, double amount, int durationTicks, String message) {
+        AttributeInstance scaleAttr = player.getAttribute(Attributes.SCALE);
+        if (scaleAttr != null) {
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(FateDiceMod.MOD_ID, modifierName);
+            scaleAttr.removeModifier(id);
+            scaleAttr.addTransientModifier(new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+
+            player.displayClientMessage(Component.literal(message), true);
+            player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.PUFFER_FISH_BLOW_OUT, SoundSource.PLAYERS, 1.0F, 1.8F);
+
+            FateScheduler.schedule(durationTicks, () -> {
+                AttributeInstance attr = player.getAttribute(Attributes.SCALE);
+                if (attr != null) {
+                    attr.removeModifier(id);
+                    player.displayClientMessage(Component.literal("§aВаш рост вернулся в норму."), true);
+                }
+            });
+        }
+    }
+
+    private static void replaceGroundTemporarily(ServerLevel level, BlockPos groundCenter, BlockState newState, int durationTicks) {
+        Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
+
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                BlockPos target = groundCenter.offset(dx, 0, dz);
+                BlockState state = level.getBlockState(target);
+                if (!state.isAir() && state.getBlock() != Blocks.BEDROCK && state.isSolid()) {
+                    originalBlocks.put(target, state);
+                    level.setBlockAndUpdate(target, newState);
+                }
+            }
+        }
+
+        FateScheduler.schedule(durationTicks, () -> {
+            for (Map.Entry<BlockPos, BlockState> entry : originalBlocks.entrySet()) {
+                if (level.getBlockState(entry.getKey()).is(newState.getBlock())) {
+                    level.setBlockAndUpdate(entry.getKey(), entry.getValue());
+                }
+            }
+        });
     }
 
     private static void transmuteNearbyStone(ServerLevel level, BlockPos center, BlockState newState, int maxBlocks) {

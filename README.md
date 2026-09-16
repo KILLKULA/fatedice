@@ -1,23 +1,27 @@
-# Fate Dice: Roll of Destiny («Бросок судьбы»)
+# Fate Dice: Roll of Destiny
 
-Мод для **Minecraft 1.21.1 (NeoForge)**, добавляющий легендарный двадцатигранный кубик (D20).
+A mod for **Minecraft 1.21.1 (NeoForge)** adding a mystical twenty-sided die (D20).
 
-## 🎲 Особенности
-- **ПКМ из руки**: бросок кубика с эффектом интриги и звуками костей.
-- **20 тематических исходов** с пулом из более чем **60 уникальных подвариантов**!
-- **Нативное изменение размера игрока**: при выпадении 4 игрок сжимается до 0.3x (нативный `Attributes.SCALE` ванильного 1.21.1).
-- **Критические исходы**:
-  - `1`: Критический провал (молния, заряженный крипер, слепота, поломка инструментов).
-  - `20`: Natural 20 (эффект Тотема, салюты, горн рейда, легендарные элитры / звезда Незера / меч судьбы).
-- **Крафт в верстаке**: аметист, редстоун и золото.
+## 🎲 Features
+- **Right-Click to Roll**: Roll the die directly from your hand with a suspenseful clatter sound and HUD effects.
+- **20 Thematic Tiers** with a pool of over **60 unique sub-variants**!
+- **Native Player Resizing**: Rolling a 4 shrinks the player to mouse size (`0.3x` scale) using vanilla 1.21.1's native `Attributes.SCALE`.
+- **Critical Outcomes**:
+  - `1`: Critical Failure (direct lightning bolt, ticking charged creeper, blindness, tool damage).
+  - `20`: Natural 20 (Totem of Undying animation, fireworks, raid horn, divine buffs, and legendary loot like enchanted Elytra, Nether Star, or the Blade of Fate).
+- **Crafting Recipe**: Redstone, gold ingots, and an amethyst shard.
 
-## 🛠️ Сборка
+## 🌐 Supported Languages
+- 🇬🇧 English (`en_us`)
+- 🇷🇺 Russian (`ru_ru`)
+
+## 🛠️ Building
 ```bash
 ./gradlew build
 ```
-Готовый JAR находится в `build/libs/fatedice-1.0.0.jar`.
+The compiled JAR will be located at `build/libs/fatedice-1.0.2.jar`.
 
-## 🎮 Запуск тестового клиента
+## 🎮 Running Test Client
 ```bash
 ./gradlew runClient
 ```

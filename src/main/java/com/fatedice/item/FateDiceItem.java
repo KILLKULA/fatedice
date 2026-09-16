@@ -36,15 +36,15 @@ public class FateDiceItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
-        tooltipComponents.add(Component.literal("§7Нажмите §e[ПКМ]§7, чтобы бросить кубик судьбы."));
-        tooltipComponents.add(Component.literal("§8«Фортуна благоволит смелым... или карает их.»"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.instruction"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.lore"));
         tooltipComponents.add(Component.empty());
-        tooltipComponents.add(Component.literal("§6★ 20: §eБлагословение Богов"));
-        tooltipComponents.add(Component.literal("§b16–19: §fОтличные бонусы и руды"));
-        tooltipComponents.add(Component.literal("§a11–15: §fПолезные усиления"));
-        tooltipComponents.add(Component.literal("§e10: §7Судьба молчит"));
-        tooltipComponents.add(Component.literal("§c2–9: §fНеприятности и испытания"));
-        tooltipComponents.add(Component.literal("§4💀 1: §cГнев судьбы (Критический провал)"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_20"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_16_19"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_11_15"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_10"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_2_9"));
+        tooltipComponents.add(Component.translatable("tooltip.fatedice.d20_dice.tier_1"));
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);
     }
 }

@@ -4,11 +4,11 @@ license="MIT"
 
 [[mods]]
 modId="fatedice"
-version="1.0.0"
+version="1.0.2"
 displayName="Fate Dice: Roll of Destiny"
 authors="Developer"
 description='''
-Бросок судьбы: магический двадцатигранный кубик (D20) со случайными событиями, тирами наград и критическими бросками!
+Fate Dice: a mystical twenty-sided die (D20) featuring unpredictable events, reward tiers, and critical rolls!
 '''
 
 [[dependencies.fatedice]]
