@@ -16,11 +16,18 @@ Will you be blessed by the Gods with enchanted Elytra and divine strength, or wi
 ## ✨ Features
 
 * 🎲 **One-Click In-Hand Rolling**: Right-click the D20 in your hand to start the roll. Experience a 1.25-second suspense phase with realistic bone clattering audio and animated HUD titles before the number reveals itself!
-* 🌀 **20 Thematic Tiers & 60+ Sub-Variants**: Unlike standard lucky blocks or random dice that only have 20 static outcomes, each face of the D20 in **Fate Dice** rolls from a pool of 2 to 4 unique sub-events. You will almost never see the exact same outcome twice!
+* 🌀 **20 Thematic Tiers & 100+ Outcomes**: Each face of the D20 in **Fate Dice** rolls from a vast pool of unique sub-events including control distortions, inter-player curses, and illusions. You will almost never see the exact same outcome twice!
+* 👹 **Giant Bosses & Micro-Mob Swarms**:
+  * **🧟 Zombie Colossus (2.8× scale, 80 HP)**: Towering undead clad in Netherite with a devastating axe. Defeating him rewards diamonds, golden apples, emeralds, and netherite gear!
+  * **💥 Mega-Titan Creeper (2.2× scale, 60 HP)**: Enormous charged creeper with a doubled explosion radius of 6 blocks (fully respects `allowDestructiveEvents`).
+  * **🦅 Thunder Leviathan Phantom (2.5× scale)**: Descends amidst a summoned lightning storm. Slaying it yields Elytra and an Enchanted Golden Apple!
+  * **🎯 Colossal Skeleton Sniper (2.3× scale)**: Snipes from afar with high-knockback arrows, dropping legendary Power V bows.
+  * **🌋 Infernal Magma Titan (Size 6)**: Spawns blazing micro-minions and drops Netherite ingots.
+  * **🐭 Micro-Mob Swarms (0.35× - 0.45× scale)**: Agile pygmy zombies in golden helmets, mini kamikaze creepers, and the elusive Micro-Void Reaper!
 * ⚡ **Epic Critical Rolls**:
-  * **💀 Natural 1 (Critical Failure)**: Darkness falls, anvils crash, and a wither roar echoes as lightning strikes you, crippling your tools, blinding your vision, or summoning a ticking Charged Creeper right behind you!
+  * **💀 Natural 1 (Critical Failure)**: Darkness falls, lightning strikes you, controls warp, or giant titans emerge to crush you!
   * **🌟 Natural 20 (Critical Success)**: A triumphant Raid Horn sounds alongside the golden Totem of Undying animation, rewarding you with god-tier buffs for 5 minutes and legendary gifts (Enchanted Elytra, Nether Star, or the God-forged Netherite Sword)!
-* 🐭 **Native Player Resizing (No External Mods Required!)**: Powered natively by Minecraft 1.21's `generic.scale` attribute, rolling a 4 temporarily shrinks you to mouse size (`0.3x`) for 60 seconds — run under slabs, sneak into 1-block gaps, and evade danger!
+* 🐭 **Native Player & Mob Resizing (No External Mods Required!)**: Powered natively by Minecraft 1.21's `generic.scale` attribute, roll 4 temporarily shrinks you to mouse size (`0.3x`) — run under slabs, sneak into 1-block gaps, and evade danger!
 * ⏳ **Self-Restoring World Changes**: Hazardous events like turning 5x5 blocks under your feet into cobwebs or soul sand automatically revert back to their original state after 15 seconds. No ruined bases!
 * 🧲 **Block Transmutation**: High rolls transmute nearby stone and deepslate into diamond veins, gold veins, or even Ancient Debris.
 * 🛡️ **Server & Griefing Friendly**: Includes a built-in config to disable destructive events (fires/explosions) for multiplayer servers.

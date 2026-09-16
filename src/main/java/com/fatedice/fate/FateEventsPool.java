@@ -35,6 +35,10 @@ import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.monster.CaveSpider;
 import net.minecraft.world.entity.monster.Pillager;
+import net.minecraft.world.entity.monster.WitherSkeleton;
+import net.minecraft.world.entity.monster.Vindicator;
+import net.minecraft.world.entity.monster.MagmaCube;
+import net.minecraft.world.entity.monster.Silverfish;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -137,6 +141,55 @@ public class FateEventsPool {
                         player.displayClientMessage(Component.literal("§4Это была всего лишь жуткая галлюцинация... Сердце ушло в пятки!"), true);
                     });
                 })
+                // 1.F: Босс «Зомби-Колосс» (Масштаб 2.8x, 80 HP, Незеритовая броня, Топор, супер-лут)
+                .add((level, player, pos) -> {
+                    Zombie boss = EntityType.ZOMBIE.create(level);
+                    if (boss != null) {
+                        Vec3 look = player.getLookAngle();
+                        BlockPos spawnPos = pos.offset((int) (-look.x * 5), 0, (int) (-look.z * 5));
+                        boss.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, 0, 0);
+                        FateMobHelper.scaleAndBuff(boss, 2.8, 80.0, 12.0, 0.9, 0.8);
+                        boss.setCustomName(Component.literal("§4§lЗомби-Колосс"));
+                        boss.setCustomNameVisible(true);
+                        boss.addTag(FateMobHelper.TAG_BOSS_COLOSSUS);
+
+                        ItemStack helmet = new ItemStack(Items.NETHERITE_HELMET);
+                        ItemStack chest = new ItemStack(Items.NETHERITE_CHESTPLATE);
+                        ItemStack axe = new ItemStack(Items.DIAMOND_AXE);
+                        var enchReg = level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+                        enchReg.getHolder(Enchantments.THORNS).ifPresent(h -> helmet.enchant(h, 3));
+                        enchReg.getHolder(Enchantments.SHARPNESS).ifPresent(h -> axe.enchant(h, 4));
+                        FateMobHelper.equip(boss, helmet, chest, ItemStack.EMPTY, new ItemStack(Items.NETHERITE_BOOTS), axe, ItemStack.EMPTY);
+
+                        level.addFreshEntity(boss);
+                        level.playSound(null, spawnPos, SoundEvents.WITHER_SPAWN, SoundSource.HOSTILE, 1.2F, 0.6F);
+                        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, spawnPos.getX() + 0.5, spawnPos.getY() + 1, spawnPos.getZ() + 0.5, 2, 0, 0, 0, 0);
+                        player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 120, 0));
+                        player.displayClientMessage(Component.literal("§4§lИз недр восстал Зомби-Колосс! Уничтожьте его ради легендарной добычи!"), false);
+                    }
+                })
+                // 1.G: «Мега-Титан Крипер» (Масштаб 2.2x, 60 HP, удвоенный радиус взрыва 6)
+                .add((level, player, pos) -> {
+                    Vec3 look = player.getLookAngle();
+                    BlockPos spawnPos = pos.offset((int) (-look.x * 4), 0, (int) (-look.z * 4));
+                    Creeper creeper = EntityType.CREEPER.create(level);
+                    if (creeper != null) {
+                        creeper.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, 0, 0);
+                        FateMobHelper.setupTitanCreeper(creeper, 2.2, 6, true);
+                        creeper.setCustomName(Component.literal("§4§lМега-Титан Крипер"));
+                        creeper.setCustomNameVisible(true);
+
+                        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+                        if (bolt != null) {
+                            bolt.moveTo(creeper.position());
+                            bolt.setVisualOnly(true);
+                            level.addFreshEntity(bolt);
+                        }
+                        level.addFreshEntity(creeper);
+                        level.playSound(null, spawnPos, SoundEvents.CREEPER_PRIMED, SoundSource.HOSTILE, 2.0F, 0.5F);
+                        player.displayClientMessage(Component.literal("§4§lЗемля содрогается... За вашей спиной материализовался Мега-Титан Крипер!"), false);
+                    }
+                })
         );
 
         // ==========================================
@@ -181,6 +234,28 @@ public class FateEventsPool {
                             level.addFreshEntity(bat);
                             FateScheduler.schedule(80, bat::discard);
                         }
+                    }
+                })
+                // 2.E: Босс «Громовой Фантом-Левиафан» (Масштаб 2.5x, 60 HP, элитры и яблоко в награду)
+                .add((level, player, pos) -> {
+                    Phantom leviathan = EntityType.PHANTOM.create(level);
+                    if (leviathan != null) {
+                        leviathan.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY() + 18, pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                        FateMobHelper.scaleAndBuff(leviathan, 2.5, 60.0, 10.0, 1.3, 0.7);
+                        leviathan.setCustomName(Component.literal("§b§lГромовой Фантом-Левиафан"));
+                        leviathan.setCustomNameVisible(true);
+                        leviathan.addTag(FateMobHelper.TAG_BOSS_LEVIATHAN);
+                        level.addFreshEntity(leviathan);
+
+                        level.setWeatherParameters(0, 6000, true, true);
+                        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+                        if (bolt != null) {
+                            bolt.moveTo(leviathan.position());
+                            bolt.setVisualOnly(true);
+                            level.addFreshEntity(bolt);
+                        }
+                        level.playSound(null, pos, SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 2.0F, 0.8F);
+                        player.displayClientMessage(Component.literal("§b§lНебеса разверзлись! Сверху пикирует Громовой Фантом-Левиафан!"), false);
                     }
                 })
         );
@@ -262,6 +337,25 @@ public class FateEventsPool {
                     player.addEffect(new MobEffectInstance(ModEffects.FORCED_SPRINT, 200, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 1));
                 })
+                // 4.D: «Нашествие Пигмеев-Зомби» (5 микро-зомби 0.35x в золотых шлемах с кинжалами)
+                .add((level, player, pos) -> {
+                    for (int i = 0; i < 5; i++) {
+                        Zombie pygmy = EntityType.ZOMBIE.create(level);
+                        if (pygmy != null) {
+                            pygmy.moveTo(pos.getX() + level.random.nextInt(7) - 3, pos.getY(), pos.getZ() + level.random.nextInt(7) - 3, 0, 0);
+                            FateMobHelper.scaleAndBuff(pygmy, 0.35, 16.0, 4.0, 1.4, 0.0);
+                            pygmy.setCustomName(Component.literal("§eПигмей-Грабитель"));
+                            pygmy.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1));
+
+                            ItemStack goldHelm = new ItemStack(Items.GOLDEN_HELMET);
+                            ItemStack goldSword = new ItemStack(Items.GOLDEN_SWORD);
+                            FateMobHelper.equip(pygmy, goldHelm, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, goldSword, ItemStack.EMPTY);
+                            level.addFreshEntity(pygmy);
+                        }
+                    }
+                    level.playSound(null, pos, SoundEvents.ZOMBIE_AMBIENT, SoundSource.HOSTILE, 1.5F, 1.8F);
+                    player.displayClientMessage(Component.literal("§cВас окружила банда юрких зомби-пигмеев!"), true);
+                })
         );
 
         // ==========================================
@@ -305,6 +399,39 @@ public class FateEventsPool {
                     } else {
                         player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 100, 0));
                     }
+                })
+                // 5.E: «Кошмарный Паук-Бегемот» (Масштаб 2.2x, 50 HP, невидимость, иссушение)
+                .add((level, player, pos) -> {
+                    CaveSpider spider = EntityType.CAVE_SPIDER.create(level);
+                    if (spider != null) {
+                        spider.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY(), pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                        FateMobHelper.scaleAndBuff(spider, 2.2, 50.0, 8.0, 1.25, 0.6);
+                        spider.setCustomName(Component.literal("§5§lКошмарный Паук-Бегемот"));
+                        spider.setCustomNameVisible(true);
+                        spider.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 1200, 0, false, false));
+                        spider.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 0));
+                        level.addFreshEntity(spider);
+
+                        replaceGroundTemporarily(level, player.blockPosition().below(), Blocks.COBWEB.defaultBlockState(), 200);
+                        level.playSound(null, pos, SoundEvents.SPIDER_AMBIENT, SoundSource.HOSTILE, 1.5F, 0.5F);
+                        player.addEffect(new MobEffectInstance(MobEffects.WITHER, 100, 1));
+                        player.displayClientMessage(Component.literal("§5Из темноты крадется гигантский невидимый Паук-Бегемот!"), false);
+                    }
+                })
+                // 5.F: «Рой микро-чешуйниц» (7 микро-чешуйниц 0.4x с высокой скоростью)
+                .add((level, player, pos) -> {
+                    for (int i = 0; i < 7; i++) {
+                        Silverfish silverfish = EntityType.SILVERFISH.create(level);
+                        if (silverfish != null) {
+                            silverfish.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY(), pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                            FateMobHelper.scaleAndBuff(silverfish, 0.4, 8.0, 3.0, 1.5, 0.0);
+                            silverfish.setCustomName(Component.literal("§7Микро-чешуйница"));
+                            silverfish.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1));
+                            level.addFreshEntity(silverfish);
+                        }
+                    }
+                    level.playSound(null, pos, SoundEvents.SILVERFISH_AMBIENT, SoundSource.HOSTILE, 1.5F, 1.6F);
+                    player.displayClientMessage(Component.literal("§7Пол под вами зашевелился... Рой микро-чешуйниц!"), true);
                 })
         );
 
@@ -352,6 +479,62 @@ public class FateEventsPool {
                         player.displayClientMessage(Component.literal("§6Скелеты заспавнились возле " + target.getName().getString() + "!"), false);
                     }
                 })
+                // 6.D: Босс «Колоссальный Скелет-Снайпер» (Масштаб 2.3x, 60 HP, снайперский лук, алмазы)
+                .add((level, player, pos) -> {
+                    Skeleton sniper = EntityType.SKELETON.create(level);
+                    if (sniper != null) {
+                        Vec3 look = player.getLookAngle();
+                        BlockPos spawnPos = pos.offset((int) (-look.x * 12), 0, (int) (-look.z * 12));
+                        sniper.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, 0, 0);
+                        FateMobHelper.scaleAndBuff(sniper, 2.3, 60.0, 6.0, 1.0, 0.7);
+                        sniper.setCustomName(Component.literal("§c§lКолоссальный Скелет-Снайпер"));
+                        sniper.setCustomNameVisible(true);
+                        sniper.addTag(FateMobHelper.TAG_BOSS_SNIPER);
+
+                        ItemStack helmet = new ItemStack(Items.CHAINMAIL_HELMET);
+                        ItemStack bow = new ItemStack(Items.BOW);
+                        var enchReg = level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+                        enchReg.getHolder(Enchantments.POWER).ifPresent(h -> bow.enchant(h, 4));
+                        enchReg.getHolder(Enchantments.PUNCH).ifPresent(h -> bow.enchant(h, 2));
+                        FateMobHelper.equip(sniper, helmet, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, bow, ItemStack.EMPTY);
+
+                        level.addFreshEntity(sniper);
+                        level.playSound(null, spawnPos, SoundEvents.SKELETON_SHOOT, SoundSource.HOSTILE, 1.5F, 0.6F);
+                        player.displayClientMessage(Component.literal("§c§lВдали замаячил силуэт... Колоссальный Скелет-Снайпер взял вас на прицел!"), false);
+                    }
+                })
+                // 6.E: «Микро-Криперы-Камикадзе» (3 микро-крипера 0.4x, высокая скорость)
+                .add((level, player, pos) -> {
+                    for (int i = 0; i < 3; i++) {
+                        Creeper mini = EntityType.CREEPER.create(level);
+                        if (mini != null) {
+                            mini.moveTo(pos.getX() + level.random.nextInt(7) - 3, pos.getY(), pos.getZ() + level.random.nextInt(7) - 3, 0, 0);
+                            FateMobHelper.scaleAndBuff(mini, 0.4, 15.0, 0, 1.4, 0.0);
+                            mini.setCustomName(Component.literal("§aМикро-Камикадзе"));
+                            mini.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1));
+                            level.addFreshEntity(mini);
+                        }
+                    }
+                    level.playSound(null, pos, SoundEvents.CREEPER_PRIMED, SoundSource.HOSTILE, 1.5F, 1.6F);
+                    player.displayClientMessage(Component.literal("§aПищащее шипение вокруг... Микро-криперы атакуют!"), true);
+                })
+                // 6.F: «Разбойники-Громилы» (2 Поборника масштаба 1.5x, 50 HP, сила)
+                .add((level, player, pos) -> {
+                    for (int i = 0; i < 2; i++) {
+                        Vindicator vindicator = EntityType.VINDICATOR.create(level);
+                        if (vindicator != null) {
+                            vindicator.moveTo(pos.getX() + level.random.nextInt(9) - 4, pos.getY(), pos.getZ() + level.random.nextInt(9) - 4, 0, 0);
+                            FateMobHelper.scaleAndBuff(vindicator, 1.5, 50.0, 10.0, 1.15, 0.5);
+                            vindicator.setCustomName(Component.literal("§4Разбойник-Громила"));
+                            vindicator.setCustomNameVisible(true);
+                            vindicator.addTag(FateMobHelper.TAG_BOSS_VINDICATOR);
+                            vindicator.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 1200, 0));
+                            level.addFreshEntity(vindicator);
+                        }
+                    }
+                    level.playSound(null, pos, SoundEvents.VINDICATOR_CELEBRATE, SoundSource.HOSTILE, 1.5F, 0.8F);
+                    player.displayClientMessage(Component.literal("§4С тяжелым топотом на вас набросились Разбойники-Громилы!"), false);
+                })
         );
 
         // ==========================================
@@ -380,6 +563,36 @@ public class FateEventsPool {
                     player.addEffect(new MobEffectInstance(ModEffects.FORCED_SPRINT, 200, 0));
                     player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 1));
                     player.displayClientMessage(Component.literal("§cПод вами горит земля! Вы бежите вперед сломя голову!"), true);
+                })
+                // 7.C: Босс «Инфернальный Магма-Титан» (Размер 6, 80 HP, микро-зомби свита, незерит)
+                .add((level, player, pos) -> {
+                    MagmaCube magma = EntityType.MAGMA_CUBE.create(level);
+                    if (magma != null) {
+                        magma.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
+                        magma.setSize(6, true);
+                        FateMobHelper.scaleAndBuff(magma, 1.0, 80.0, 10.0, 1.1, 0.8);
+                        magma.setCustomName(Component.literal("§6§lИнфернальный Магма-Титан"));
+                        magma.setCustomNameVisible(true);
+                        magma.addTag(FateMobHelper.TAG_BOSS_MAGMA);
+                        level.addFreshEntity(magma);
+
+                        // Burning micro-zombies
+                        for (int i = 0; i < 3; i++) {
+                            Zombie minion = EntityType.ZOMBIE.create(level);
+                            if (minion != null) {
+                                minion.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY(), pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                                FateMobHelper.scaleAndBuff(minion, 0.4, 20.0, 4.0, 1.3, 0.0);
+                                minion.setCustomName(Component.literal("§6Пылающий Миньон"));
+                                minion.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 2400, 0));
+                                minion.igniteForSeconds(120);
+                                FateMobHelper.equip(minion, new ItemStack(Items.GOLDEN_HELMET), ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, new ItemStack(Items.GOLDEN_SWORD), ItemStack.EMPTY);
+                                level.addFreshEntity(minion);
+                            }
+                        }
+
+                        level.playSound(null, pos, SoundEvents.MAGMA_CUBE_JUMP, SoundSource.HOSTILE, 2.0F, 0.6F);
+                        player.displayClientMessage(Component.literal("§6§lЗемля раскалилась! Из огненной бездны поднялся Инфернальный Магма-Титан!"), false);
+                    }
                 })
         );
 
@@ -455,6 +668,26 @@ public class FateEventsPool {
                         player.displayClientMessage(Component.literal("§aВы перенаправили слабость на " + other.getName().getString() + "!"), false);
                     } else {
                         player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600, 1));
+                    }
+                })
+                // 9.D: «Микро-Жнец Бездны» (Микро-Визер-скелет 0.45x, Сверхскорость, Иссушение III)
+                .add((level, player, pos) -> {
+                    WitherSkeleton reaper = EntityType.WITHER_SKELETON.create(level);
+                    if (reaper != null) {
+                        reaper.moveTo(pos.getX() + level.random.nextInt(5) - 2, pos.getY(), pos.getZ() + level.random.nextInt(5) - 2, 0, 0);
+                        FateMobHelper.scaleAndBuff(reaper, 0.45, 30.0, 8.0, 1.5, 0.2);
+                        reaper.setCustomName(Component.literal("§8§lМикро-Жнец Бездны"));
+                        reaper.setCustomNameVisible(true);
+                        reaper.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 2400, 2));
+
+                        ItemStack stoneSword = new ItemStack(Items.STONE_SWORD);
+                        var enchReg = level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+                        enchReg.getHolder(Enchantments.SHARPNESS).ifPresent(h -> stoneSword.enchant(h, 4));
+                        FateMobHelper.equip(reaper, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, stoneSword, ItemStack.EMPTY);
+
+                        level.addFreshEntity(reaper);
+                        level.playSound(null, pos, SoundEvents.WITHER_SKELETON_AMBIENT, SoundSource.HOSTILE, 1.5F, 1.8F);
+                        player.displayClientMessage(Component.literal("§8Маленькая черная тень метнулась к вам... Микро-Жнец Бездны!"), true);
                     }
                 })
         );

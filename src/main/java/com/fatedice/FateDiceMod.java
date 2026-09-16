@@ -37,8 +37,9 @@ public class FateDiceMod {
         // Register Event Pools (100+ outcomes)
         FateEventsPool.init();
 
-        // Register Server Tick Handler
+        // Register Server Tick & Fate Event Handlers
         NeoForge.EVENT_BUS.register(FateScheduler.class);
+        NeoForge.EVENT_BUS.register(com.fatedice.fate.FateMobHelper.class);
 
         // Register Client Controls Handler on client distribution
         if (FMLLoader.getDist().isClient()) {
